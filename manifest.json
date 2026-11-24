@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "LGTM for me",
+  "version": "0.1.0",
+  "description": "在 MR / PR 页面把 LGTM 填进评论框，发送由你手动完成。",
+  "action": {
+    "default_title": "LGTM for me"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*",
+        "https://git.example.com/*",
+        "https://review.example.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
