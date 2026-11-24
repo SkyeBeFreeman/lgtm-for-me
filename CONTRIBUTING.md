@@ -20,5 +20,5 @@
 ## Pull Request
 
 - 说明改动动机、验证方式（命令与实机步骤）、影响的规则匹配 / 权限范围。
-- 保持 `manifest.json` 的版本与 `CHANGELOG.md` 一致。
+- 保持 `manifest.json` 的版本与 `CHANGELOG.md` 一致：未打 tag / 创建 release 前，所有变更只记在 `Unreleased`，不写版本段落或指向 tag / release 的链接；`manifest.json` 的 `version` 只是待发布版本号。发版时再把 `Unreleased` 转为同名版本段落。
 - 不要提交 `.env`、密钥、`*.pem`、打包产物，或含内部域名与真实评审地址的规则示例；文档统一使用 `example.com` 等示例域名。
