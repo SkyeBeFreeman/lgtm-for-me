@@ -1,0 +1,23 @@
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node 与测试产物
+node_modules/
+coverage/
+*.log
+npm-debug.log*
+
+# Chrome 扩展打包产物与签名私钥
+dist/
+build/
+*.zip
+*.crx
+*.pem
+
+# 本地凭据
+.env
+.env.*
+!.env.example
