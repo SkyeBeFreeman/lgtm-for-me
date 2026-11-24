@@ -14,13 +14,15 @@ test('默认规则只覆盖 GitHub PR 与 GitLab MR', () => {
   assert.equal(rules.ID_PREFIX, 'lgtm-site-');
 });
 
-test('validatePattern 接受合法规则（含端口）', () => {
+test('validatePattern 接受 http/https 合法规则（含端口）', () => {
   assert.equal(rules.validatePattern('https://github.com/*/pull/*').ok, true);
   assert.equal(rules.validatePattern('https://git.example.com:8443/*/merge_requests/*').ok, true);
+  assert.equal(rules.validatePattern('http://review.example.com/*/pull/*').ok, true);
+  assert.equal(rules.validatePattern('http://git.example.com:8080/*/merge_requests/*').ok, true);
 });
 
-test('validatePattern 拒绝非 https、query、域名通配符、非法字符、超长与非字符串', () => {
-  assert.equal(rules.validatePattern('http://github.com/*').ok, false);
+test('validatePattern 拒绝非法协议、query、域名通配符、非法字符、超长与非字符串', () => {
+  assert.equal(rules.validatePattern('ftp://github.com/*').ok, false);
   assert.equal(rules.validatePattern('https://github.com/*?tab=1').ok, false);
   assert.equal(rules.validatePattern('https://*.example.com/*').ok, false);
   assert.equal(rules.validatePattern('https://example.com/$(whoami)').ok, false);
@@ -28,20 +30,22 @@ test('validatePattern 拒绝非 https、query、域名通配符、非法字符�
   assert.equal(rules.validatePattern(null).ok, false);
 });
 
-test('compileRules 跳过停用、非法与空规则', () => {
+test('compileRules 跳过停用、非法与空规则，但保留 http 规则', () => {
   const compiled = rules.compileRules([
     { pattern: 'https://github.com/*/pull/*', enabled: true },
     { pattern: 'https://github.com/*/issues/*', enabled: false },
-    { pattern: 'http://bad.example.com/*', enabled: true },
+    { pattern: 'http://review.example.com/*/pull/*', enabled: true },
+    { pattern: 'ftp://bad.example.com/*', enabled: true },
     null,
   ]);
-  assert.equal(compiled.length, 1);
+  assert.equal(compiled.length, 2);
   assert.equal(rules.compileRules(null).length, 0);
   assert.equal(rules.isAllowed('https://github.com/a/b/pull/12', compiled), true);
+  assert.equal(rules.isAllowed('http://review.example.com/a/b/pull/12', compiled), true);
   assert.equal(rules.isAllowed('https://github.com/a/b/issues/12', compiled), false);
 });
 
-test('isAllowed 命中 PR / MR，忽略 query 与 hash，排除 issue、内网与非 https', () => {
+test('isAllowed 命中 PR / MR，忽略 query 与 hash，排除 issue、未授权站点与非法协议', () => {
   const compiled = rules.compileRules(rules.DEFAULT_RULES);
   assert.equal(rules.isAllowed('https://github.com/acme/repo/pull/42/files', compiled), true);
   assert.equal(rules.isAllowed('https://github.com/acme/repo/pull/42?diff=split#top', compiled), true);
@@ -50,13 +54,15 @@ test('isAllowed 命中 PR / MR，忽略 query 与 hash，排除 issue、内网�
   assert.equal(rules.isAllowed('https://gitlab.com/acme/repo/merge_requests/7', compiled), true);
   assert.equal(rules.isAllowed('https://git.example.com/acme/repo/merge_requests/7', compiled), false);
   assert.equal(rules.isAllowed('http://github.com/a/b/pull/1', compiled), false);
+  assert.equal(rules.isAllowed('ftp://github.com/a/b/pull/1', compiled), false);
   assert.equal(rules.isAllowed('not a url', compiled), false);
 });
 
-test('originPatternFromRule 提取授权用 origin，支持端口', () => {
+test('originPatternFromRule 提取授权用 origin，支持端口与 http', () => {
   assert.equal(rules.originPatternFromRule('https://git.example.com/*/merge_requests/*'), 'https://git.example.com/*');
   assert.equal(rules.originPatternFromRule('https://gitlab.internal:8443/*/merge_requests/*'), 'https://gitlab.internal:8443/*');
   assert.equal(rules.originPatternFromRule('https://github.com/*/pull/*'), 'https://github.com/*');
+  assert.equal(rules.originPatternFromRule('http://git.example.com:8080/*/merge_requests/*'), 'http://git.example.com:8080/*');
 });
 
 test('isDefaultOrigin 与 scriptIdFor 稳定且只含安全字符', () => {
@@ -74,7 +80,7 @@ test('registrationFor 只为已授权的非默认站点生成注册项并去重'
     { pattern: 'https://review.example.com/*/merge_requests/*', enabled: true },
     { pattern: 'https://review.example.com/*/pull/*', enabled: true },
     { pattern: 'https://disabled.example.com/*', enabled: false },
-    { pattern: 'http://bad.example.com/*', enabled: true },
+    { pattern: 'ftp://bad.example.com/*', enabled: true },
   ];
 
   assert.deepEqual(rules.registrationFor(ruleset, []), []);
@@ -95,6 +101,22 @@ test('registrationFor 只为已授权的非默认站点生成注册项并去重'
     },
   ]);
   assert.deepEqual(rules.registrationFor(null, granted), []);
+});
+
+test('http 规则可生成脚本注册项与权限请求', () => {
+  const pattern = 'http://review.example.com/*/pull/*';
+  const origin = 'http://review.example.com/*';
+  assert.equal(rules.originPatternFromRule(pattern), origin);
+  assert.equal(rules.permissionRequestFor(pattern, [], true), origin);
+  assert.equal(rules.permissionRequestFor(pattern, [origin], true), null);
+  assert.deepEqual(rules.registrationFor([{ pattern, enabled: true }], [origin]), [
+    {
+      id: rules.scriptIdFor(origin),
+      matches: [origin],
+      js: ['common.js', 'content.js'],
+      runAt: 'document_idle',
+    },
+  ]);
 });
 
 test('buttonEventHandlers 阻止按钮抢焦点并把鼠标事件隔离在插件内', () => {
@@ -122,7 +144,7 @@ test('permissionRequestFor 仅在勾选且需要授权时返回 origin', () => {
   assert.equal(rules.permissionRequestFor(pattern, null, true), origin);
   assert.equal(rules.permissionRequestFor('https://github.com/*/pull/*', [], true), null);
   assert.equal(rules.permissionRequestFor('https://gitlab.com/*/merge_requests/*', [], true), null);
-  assert.equal(rules.permissionRequestFor('http://bad.example.com/*', [], true), null);
+  assert.equal(rules.permissionRequestFor('ftp://bad.example.com/*', [], true), null);
   assert.equal(
     rules.permissionRequestFor('https://git.example.com:8443/*/merge_requests/*', [], true),
     'https://git.example.com:8443/*'

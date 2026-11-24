@@ -17,7 +17,7 @@ test('默认只静态注入 GitHub 与 GitLab，common.js 先加载', () => {
 
 test('按需授权所需权限与入口齐备', () => {
   assert.deepEqual(manifest.permissions, ['storage', 'scripting']);
-  assert.deepEqual(manifest.optional_host_permissions, ['https://*/*']);
+  assert.deepEqual(manifest.optional_host_permissions, ['*://*/*']);
   assert.equal(manifest.options_page, 'options.html');
   assert.equal(manifest.background.service_worker, 'background.js');
 });

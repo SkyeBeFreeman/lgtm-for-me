@@ -11,18 +11,19 @@ globalThis.LgtmRules = (() => {
   const SAFE_CHARS = new Set(
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._~:/-*'.split('')
   );
+  const SCHEME_PATTERN = /^https?:\/\//;
 
   const validatePattern = (pattern) => {
-    if (typeof pattern !== 'string' || !pattern.startsWith('https://')) {
-      return { ok: false, reason: '规则必须以 https:// 开头' };
+    if (typeof pattern !== 'string' || !SCHEME_PATTERN.test(pattern)) {
+      return { ok: false, reason: '规则必须以 http:// 或 https:// 开头' };
     }
     if (pattern.length > MAX_LENGTH) {
       return { ok: false, reason: '规则过长（上限 512 字符）' };
     }
     if ([...pattern].some((ch) => !SAFE_CHARS.has(ch))) {
-      return { ok: false, reason: '规则含不支持的字符，只允许 https URL 字符与 * 通配符' };
+      return { ok: false, reason: '规则含不支持的字符，只允许 URL 字符与 * 通配符' };
     }
-    const authority = pattern.slice('https://'.length).split('/')[0];
+    const authority = pattern.slice(pattern.indexOf('://') + 3).split('/')[0];
     if (!authority || authority.includes('*')) {
       return { ok: false, reason: '域名不能为空，也不支持通配符' };
     }
@@ -48,13 +49,13 @@ globalThis.LgtmRules = (() => {
     } catch {
       return false;
     }
-    if (parsed.protocol !== 'https:') return false;
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
     const target = `${parsed.origin}${parsed.pathname}`;
     return regexes.some((regex) => regex.test(target));
   };
 
   const originPatternFromRule = (pattern) => {
-    const match = /^(https:\/\/[A-Za-z0-9._~:-]+)\//.exec(pattern);
+    const match = /^(https?:\/\/[A-Za-z0-9._~:-]+)\//.exec(pattern);
     return match ? `${match[1]}/*` : null;
   };
 
