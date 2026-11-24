@@ -119,19 +119,95 @@ test('http 规则可生成脚本注册项与权限请求', () => {
   ]);
 });
 
-test('buttonEventHandlers 阻止按钮抢焦点并把鼠标事件隔离在插件内', () => {
+const mockButtonEvent = (target, path = []) => {
+  const calls = { prevented: 0, stopped: 0, stoppedImmediately: 0 };
+  return {
+    target,
+    composedPath: () => path,
+    preventDefault() { calls.prevented += 1; },
+    stopPropagation() { calls.stopped += 1; },
+    stopImmediatePropagation() { calls.stoppedImmediately += 1; },
+    calls,
+  };
+};
+
+test('buttonInteraction 在捕获阶段隔离整串点击，按下时准备、click 时填入', () => {
+  const host = {};
+  const button = {};
+  let prepared = 0;
+  let activated = 0;
+  const interaction = rules.buttonInteraction({
+    onPrepare: () => { prepared += 1; },
+    onActivate: () => { activated += 1; },
+  });
+  assert.deepEqual(interaction.eventTypes, [
+    'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click',
+  ]);
+
+  const pointerDown = mockButtonEvent({}, [host, button]);
+  assert.equal(interaction.handle('pointerdown', pointerDown, host, button), true);
+  assert.equal(pointerDown.calls.prevented, 0);
+  assert.equal(pointerDown.calls.stoppedImmediately, 1);
+  assert.equal(prepared, 1);
+  assert.equal(activated, 0);
+
+  const mouseDown = mockButtonEvent(host);
+  assert.equal(interaction.handle('mousedown', mouseDown, host, button), true);
+  assert.equal(mouseDown.calls.prevented, 1);
+  assert.equal(mouseDown.calls.stoppedImmediately, 1);
+  assert.equal(prepared, 2);
+
+  for (const type of ['pointerup', 'mouseup']) {
+    const event = mockButtonEvent(host);
+    assert.equal(interaction.handle(type, event, host, button), true);
+    assert.equal(event.calls.prevented, 0);
+    assert.equal(event.calls.stoppedImmediately, 1);
+    assert.equal(prepared, 2);
+  }
+
+  const click = mockButtonEvent(host);
+  assert.equal(interaction.handle('click', click, host, button), true);
+  assert.equal(click.calls.prevented, 0);
+  assert.equal(click.calls.stoppedImmediately, 1);
+  assert.equal(activated, 1);
+});
+
+test('buttonInteraction 放行无关事件、未知类型，并兼容缺少 stopImmediatePropagation 的事件', () => {
+  const host = {};
+  const button = {};
+  let activated = 0;
+  const interaction = rules.buttonInteraction({ onActivate: () => { activated += 1; } });
+
+  const other = mockButtonEvent({}, [{}]);
+  assert.equal(interaction.handle('click', other, host, button), false);
+  assert.equal(other.calls.stoppedImmediately, 0);
+  assert.equal(other.calls.stopped, 0);
+  assert.equal(interaction.handle('focusout', mockButtonEvent(host), host, button), false);
+  assert.equal(activated, 0);
+
+  const legacy = {
+    target: host,
+    stopped: 0,
+    preventDefault() {},
+    stopPropagation() { this.stopped += 1; },
+  };
+  assert.equal(interaction.handle('click', legacy, host, button), true);
+  assert.equal(legacy.stopped, 1);
+  assert.equal(activated, 1);
+});
+
+test('buttonInteraction 提供冒泡兜底与按钮 mousedown 兜底', () => {
+  const interaction = rules.buttonInteraction();
   const calls = { prevented: 0, stopped: 0 };
   const event = {
     preventDefault() { calls.prevented += 1; },
     stopPropagation() { calls.stopped += 1; },
   };
-  const handlers = rules.buttonEventHandlers();
-  handlers.onButtonMouseDown(event);
+  interaction.handleButtonMouseDown(event);
   assert.equal(calls.prevented, 1);
   assert.equal(calls.stopped, 0);
-  handlers.onHostMouseEvent(event);
+  interaction.handleBubble(event);
   assert.equal(calls.stopped, 1);
-  assert.equal(calls.prevented, 1);
 });
 
 test('permissionRequestFor 仅在勾选且需要授权时返回 origin', () => {

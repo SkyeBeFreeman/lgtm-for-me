@@ -76,10 +76,27 @@
   shadow.append(style, button, toast);
   document.body.appendChild(host);
 
-  const { onButtonMouseDown, onHostMouseEvent } = LgtmRules.buttonEventHandlers();
-  button.addEventListener('mousedown', onButtonMouseDown);
-  ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach((type) => {
-    host.addEventListener(type, onHostMouseEvent);
+  let pendingEditor = null;
+  const interaction = LgtmRules.buttonInteraction({
+    onPrepare: () => {
+      pendingEditor = findEditor();
+    },
+    onActivate: () => {
+      const editor = pendingEditor && pendingEditor.isConnected ? pendingEditor : findEditor();
+      pendingEditor = null;
+      if (!editor) {
+        showToast('未找到评论框', 'error');
+        return;
+      }
+      if (editor.isContentEditable) appendToContentEditable(editor);
+      else appendToNativeInput(editor);
+      showToast('已填入，请手动发送');
+    },
+  });
+
+  button.addEventListener('mousedown', interaction.handleButtonMouseDown);
+  interaction.eventTypes.forEach((type) => {
+    host.addEventListener(type, interaction.handleBubble);
   });
 
   let toastTimer;
@@ -120,20 +137,19 @@
       ? HTMLTextAreaElement.prototype
       : HTMLInputElement.prototype;
     const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-    el.focus();
     if (setter) setter.call(el, next);
     else el.value = next;
     el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-    try {
-      el.setSelectionRange(next.length, next.length);
-    } catch {}
+    if (document.activeElement === el) {
+      try {
+        el.setSelectionRange(next.length, next.length);
+      } catch {}
+    }
   };
 
   const appendToContentEditable = (el) => {
     const current = el.innerText.trim();
     const text = current ? `\n${COMMENT_TEXT}` : COMMENT_TEXT;
-    el.focus();
     const range = document.createRange();
     range.selectNodeContents(el);
     range.collapse(false);
@@ -141,20 +157,17 @@
     selection.removeAllRanges();
     selection.addRange(range);
     if (!document.execCommand('insertText', false, text)) {
-      el.textContent = `${el.textContent.replace(/\s+$/, '')}${text}`;
+      const fallback = document.createRange();
+      fallback.selectNodeContents(el);
+      fallback.collapse(false);
+      fallback.insertNode(document.createTextNode(text));
+      el.normalize();
       el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text }));
     }
   };
 
-  button.addEventListener('click', () => {
-    const editor = findEditor();
-    if (!editor) {
-      showToast('未找到评论框', 'error');
-      return;
-    }
-    if (editor.isContentEditable) appendToContentEditable(editor);
-    else appendToNativeInput(editor);
-    showToast('已填入，请手动发送');
+  interaction.eventTypes.forEach((type) => {
+    window.addEventListener(type, (event) => interaction.handle(type, event, host, button), true);
   });
 
   const syncVisibility = () => {

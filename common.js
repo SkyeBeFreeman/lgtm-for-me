@@ -92,9 +92,33 @@ globalThis.LgtmRules = (() => {
     return [...scripts.values()];
   };
 
-  const buttonEventHandlers = () => ({
-    onButtonMouseDown: (event) => event.preventDefault(),
-    onHostMouseEvent: (event) => event.stopPropagation(),
+  const BUTTON_EVENT_TYPES = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'];
+  const BUTTON_PRESS_TYPES = ['pointerdown', 'mousedown'];
+
+  const isButtonEvent = (event, host, button) => {
+    if (!event || !host) return false;
+    if (event.target === host || (button && event.target === button)) return true;
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    return path.includes(host) || (button ? path.includes(button) : false);
+  };
+
+  const stopEvent = (event) => {
+    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    else if (typeof event.stopPropagation === 'function') event.stopPropagation();
+  };
+
+  const buttonInteraction = ({ onPrepare, onActivate } = {}) => ({
+    eventTypes: BUTTON_EVENT_TYPES.slice(),
+    handle: (type, event, host, button) => {
+      if (!BUTTON_EVENT_TYPES.includes(type) || !isButtonEvent(event, host, button)) return false;
+      if (type === 'mousedown') event.preventDefault();
+      stopEvent(event);
+      if (BUTTON_PRESS_TYPES.includes(type) && onPrepare) onPrepare();
+      if (type === 'click' && onActivate) onActivate();
+      return true;
+    },
+    handleBubble: (event) => event.stopPropagation(),
+    handleButtonMouseDown: (event) => event.preventDefault(),
   });
 
   return {
@@ -110,7 +134,7 @@ globalThis.LgtmRules = (() => {
     permissionRequestFor,
     scriptIdFor,
     registrationFor,
-    buttonEventHandlers,
+    buttonInteraction,
   };
 })();
 
