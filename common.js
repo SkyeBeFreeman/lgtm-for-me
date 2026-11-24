@@ -63,6 +63,26 @@ globalThis.LgtmRules = (() => {
   const scriptIdFor = (originPattern) =>
     `${ID_PREFIX}${originPattern.replace(/[^A-Za-z0-9]/g, '_')}`;
 
+  const registrationFor = (rules, grantedOrigins) => {
+    const granted = new Set(
+      Array.isArray(grantedOrigins) ? grantedOrigins : []
+    );
+    const scripts = new Map();
+    for (const rule of Array.isArray(rules) ? rules : []) {
+      if (!rule || !rule.enabled || !validatePattern(rule.pattern).ok) continue;
+      const origin = originPatternFromRule(rule.pattern);
+      if (!origin || isDefaultOrigin(origin) || !granted.has(origin)) continue;
+      const id = scriptIdFor(origin);
+      scripts.set(id, {
+        id,
+        matches: [origin],
+        js: ['common.js', 'content.js'],
+        runAt: 'document_idle',
+      });
+    }
+    return [...scripts.values()];
+  };
+
   return {
     DEFAULT_RULES,
     DEFAULT_ORIGINS,
@@ -74,6 +94,7 @@ globalThis.LgtmRules = (() => {
     originPatternFromRule,
     isDefaultOrigin,
     scriptIdFor,
+    registrationFor,
   };
 })();
 

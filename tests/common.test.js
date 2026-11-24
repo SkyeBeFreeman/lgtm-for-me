@@ -66,3 +66,33 @@ test('isDefaultOrigin 与 scriptIdFor 稳定且只含安全字符', () => {
   assert.equal(rules.scriptIdFor('https://review.example.com/*'), 'lgtm-site-https___review_example_com__');
   assert.equal(rules.scriptIdFor('https://review.example.com/*'), rules.scriptIdFor('https://review.example.com/*'));
 });
+
+test('registrationFor 只为已授权的非默认站点生成注册项并去重', () => {
+  const ruleset = [
+    { pattern: 'https://github.com/*/pull/*', enabled: true },
+    { pattern: 'https://git.example.com/*/merge_requests/*', enabled: true },
+    { pattern: 'https://review.example.com/*/merge_requests/*', enabled: true },
+    { pattern: 'https://review.example.com/*/pull/*', enabled: true },
+    { pattern: 'https://disabled.example.com/*', enabled: false },
+    { pattern: 'http://bad.example.com/*', enabled: true },
+  ];
+
+  assert.deepEqual(rules.registrationFor(ruleset, []), []);
+
+  const granted = ['https://git.example.com/*', 'https://review.example.com/*', 'https://disabled.example.com/*'];
+  assert.deepEqual(rules.registrationFor(ruleset, granted), [
+    {
+      id: 'lgtm-site-https___git_example_com__',
+      matches: ['https://git.example.com/*'],
+      js: ['common.js', 'content.js'],
+      runAt: 'document_idle',
+    },
+    {
+      id: 'lgtm-site-https___review_example_com__',
+      matches: ['https://review.example.com/*'],
+      js: ['common.js', 'content.js'],
+      runAt: 'document_idle',
+    },
+  ]);
+  assert.deepEqual(rules.registrationFor(null, granted), []);
+});
