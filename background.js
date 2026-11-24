@@ -2,7 +2,7 @@ importScripts('common.js');
 
 const getRules = async () => {
   const { rules } = await chrome.storage.sync.get({ rules: LgtmRules.DEFAULT_RULES });
-  return Array.isArray(rules) ? rules : LgtmRules.DEFAULT_RULES.slice();
+  return Array.isArray(rules) ? rules.slice() : LgtmRules.DEFAULT_RULES.slice();
 };
 
 const desiredScripts = async () => {
