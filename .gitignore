@@ -21,3 +21,6 @@ build/
 .env
 .env.*
 !.env.example
+
+# 本地 agent 工作文档
+.agents/
