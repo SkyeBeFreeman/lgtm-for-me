@@ -83,6 +83,11 @@ globalThis.LgtmRules = (() => {
     return [...scripts.values()];
   };
 
+  const buttonEventHandlers = () => ({
+    onButtonMouseDown: (event) => event.preventDefault(),
+    onHostMouseEvent: (event) => event.stopPropagation(),
+  });
+
   return {
     DEFAULT_RULES,
     DEFAULT_ORIGINS,
@@ -95,6 +100,7 @@ globalThis.LgtmRules = (() => {
     isDefaultOrigin,
     scriptIdFor,
     registrationFor,
+    buttonEventHandlers,
   };
 })();
 

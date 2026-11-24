@@ -76,6 +76,12 @@
   shadow.append(style, button, toast);
   document.body.appendChild(host);
 
+  const { onButtonMouseDown, onHostMouseEvent } = LgtmRules.buttonEventHandlers();
+  button.addEventListener('mousedown', onButtonMouseDown);
+  ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach((type) => {
+    host.addEventListener(type, onHostMouseEvent);
+  });
+
   let toastTimer;
   const showToast = (message, tone = 'ok') => {
     clearTimeout(toastTimer);

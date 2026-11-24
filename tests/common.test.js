@@ -96,3 +96,18 @@ test('registrationFor 只为已授权的非默认站点生成注册项并去重'
   ]);
   assert.deepEqual(rules.registrationFor(null, granted), []);
 });
+
+test('buttonEventHandlers 阻止按钮抢焦点并把鼠标事件隔离在插件内', () => {
+  const calls = { prevented: 0, stopped: 0 };
+  const event = {
+    preventDefault() { calls.prevented += 1; },
+    stopPropagation() { calls.stopped += 1; },
+  };
+  const handlers = rules.buttonEventHandlers();
+  handlers.onButtonMouseDown(event);
+  assert.equal(calls.prevented, 1);
+  assert.equal(calls.stopped, 0);
+  handlers.onHostMouseEvent(event);
+  assert.equal(calls.stopped, 1);
+  assert.equal(calls.prevented, 1);
+});
