@@ -1,7 +1,9 @@
 const form = document.getElementById('add-form');
 const input = document.getElementById('pattern');
+const autoAuthorize = document.getElementById('auto-authorize');
 const errorBox = document.getElementById('error');
 const list = document.getElementById('rules');
+let grantedOrigins = [];
 
 const getRules = async () => {
   const { rules } = await chrome.storage.sync.get({ rules: LgtmRules.DEFAULT_RULES });
@@ -32,7 +34,8 @@ const render = async () => {
     getRules(),
     chrome.permissions.getAll(),
   ]);
-  const granted = new Set(permissions.origins || []);
+  grantedOrigins = permissions.origins || [];
+  const granted = new Set(grantedOrigins);
   list.replaceChildren();
 
   rules.forEach((rule, index) => {
@@ -89,6 +92,14 @@ form.addEventListener('submit', async (event) => {
     showError(check.reason);
     return;
   }
+
+  // 权限请求必须在用户手势内发起：任何 await 之后手势已失效。
+  const origin = LgtmRules.permissionRequestFor(pattern, grantedOrigins, autoAuthorize.checked);
+  let authorized = true;
+  if (origin) {
+    authorized = await chrome.permissions.request({ origins: [origin] });
+  }
+
   const rules = await getRules();
   if (rules.some((rule) => rule.pattern === pattern)) {
     showError('规则已存在');
@@ -97,7 +108,7 @@ form.addEventListener('submit', async (event) => {
   rules.push({ pattern, enabled: true });
   await setRules(rules);
   input.value = '';
-  showError('');
+  showError(authorized ? '' : '未获得该站点权限，规则已保存但按钮不会出现');
   await notifyBackground();
   await render();
 });

@@ -60,6 +60,14 @@ globalThis.LgtmRules = (() => {
 
   const isDefaultOrigin = (originPattern) => DEFAULT_ORIGINS.includes(originPattern);
 
+  const permissionRequestFor = (pattern, grantedOrigins, autoAuthorize) => {
+    if (!autoAuthorize || !validatePattern(pattern).ok) return null;
+    const origin = originPatternFromRule(pattern);
+    if (!origin || isDefaultOrigin(origin)) return null;
+    const granted = new Set(Array.isArray(grantedOrigins) ? grantedOrigins : []);
+    return granted.has(origin) ? null : origin;
+  };
+
   const scriptIdFor = (originPattern) =>
     `${ID_PREFIX}${originPattern.replace(/[^A-Za-z0-9]/g, '_')}`;
 
@@ -98,6 +106,7 @@ globalThis.LgtmRules = (() => {
     isAllowed,
     originPatternFromRule,
     isDefaultOrigin,
+    permissionRequestFor,
     scriptIdFor,
     registrationFor,
     buttonEventHandlers,

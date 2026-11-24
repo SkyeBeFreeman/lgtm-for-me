@@ -11,6 +11,7 @@
     input[type="text"] { flex: 1; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 6px; font: inherit; }
     button { padding: 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa; font: inherit; cursor: pointer; }
     button:hover { background: #eef1f4; }
+    .option { display: flex; align-items: center; gap: 8px; color: #57606a; font-size: 13px; margin: 0 0 12px; }
     .error { color: #a40e26; min-height: 20px; margin: 0 0 12px; }
     ul { list-style: none; padding: 0; margin: 0; }
     li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #d8dee4; }
@@ -20,11 +21,15 @@
 </head>
 <body>
   <h1>显示按钮的页面</h1>
-  <p class="hint">按钮只在规则匹配的页面出现。默认规则见下方列表；新增站点规则后点「启用站点」授权并刷新该页面。匹配忽略 query 与 hash。</p>
+  <p class="hint">按钮只在规则匹配的页面出现。默认规则见下方列表；新增站点默认在添加时弹出授权，也可取消勾选后稍后点「启用站点」。授权后刷新该页面。匹配忽略 query 与 hash。</p>
   <form id="add-form">
     <input id="pattern" type="text" placeholder="https://git.example.com/*/merge_requests/*" autocomplete="off" spellcheck="false">
     <button type="submit">添加规则</button>
   </form>
+  <label class="option">
+    <input id="auto-authorize" type="checkbox" checked>
+    添加后立即授权（新站点会弹出 Chrome 权限确认）
+  </label>
   <p id="error" class="error" role="alert"></p>
   <ul id="rules"></ul>
   <script src="common.js"></script>

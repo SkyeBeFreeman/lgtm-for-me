@@ -111,3 +111,20 @@ test('buttonEventHandlers 阻止按钮抢焦点并把鼠标事件隔离在插件
   assert.equal(calls.stopped, 1);
   assert.equal(calls.prevented, 1);
 });
+
+test('permissionRequestFor 仅在勾选且需要授权时返回 origin', () => {
+  const pattern = 'https://git.example.com/*/merge_requests/*';
+  const origin = 'https://git.example.com/*';
+
+  assert.equal(rules.permissionRequestFor(pattern, [], true), origin);
+  assert.equal(rules.permissionRequestFor(pattern, [], false), null);
+  assert.equal(rules.permissionRequestFor(pattern, [origin], true), null);
+  assert.equal(rules.permissionRequestFor(pattern, null, true), origin);
+  assert.equal(rules.permissionRequestFor('https://github.com/*/pull/*', [], true), null);
+  assert.equal(rules.permissionRequestFor('https://gitlab.com/*/merge_requests/*', [], true), null);
+  assert.equal(rules.permissionRequestFor('http://bad.example.com/*', [], true), null);
+  assert.equal(
+    rules.permissionRequestFor('https://git.example.com:8443/*/merge_requests/*', [], true),
+    'https://git.example.com:8443/*'
+  );
+});
