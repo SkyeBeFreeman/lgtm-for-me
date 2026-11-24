@@ -4,11 +4,7 @@
   const ROOT_ID = 'lgtm-for-me-root';
   const BUTTON_LABEL = 'LGTM';
   const COMMENT_TEXT = 'LGTM.';
-  const PAGE_MATCHERS = {
-    'github.com': /\/[^/]+\/[^/]+\/pull\/\d+(?:\/|$)/,
-    'git.example.com': /\/merge_requests\/\d+(?:\/|$)/,
-    'review.example.com': /.*/,
-  };
+  let compiledRules = LgtmRules.compileRules(LgtmRules.DEFAULT_RULES);
   const EDITOR_SELECTORS = [
     'textarea#new_comment_field',
     'textarea[name="comment[body]"]',
@@ -156,9 +152,22 @@
   });
 
   const syncVisibility = () => {
-    const matcher = PAGE_MATCHERS[location.hostname];
-    host.style.display = matcher && matcher.test(location.pathname) ? '' : 'none';
+    host.style.display = LgtmRules.isAllowed(location.href, compiledRules) ? '' : 'none';
   };
+
+  const refreshRules = async () => {
+    const { rules } = await chrome.storage.sync.get({ rules: LgtmRules.DEFAULT_RULES });
+    compiledRules = LgtmRules.compileRules(rules);
+    syncVisibility();
+  };
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync' || !changes.rules) return;
+    compiledRules = LgtmRules.compileRules(changes.rules.newValue || []);
+    syncVisibility();
+  });
+
+  refreshRules();
   syncVisibility();
 
   let lastHref = location.href;
