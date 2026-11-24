@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>LGTM for me 设置</title>
+  <style>
+    body { font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1f2328; margin: 32px auto; max-width: 760px; padding: 0 20px; }
+    h1 { font-size: 20px; margin: 0 0 8px; }
+    .hint { color: #57606a; margin: 0 0 20px; }
+    form { display: flex; gap: 8px; margin-bottom: 8px; }
+    input[type="text"] { flex: 1; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 6px; font: inherit; }
+    button { padding: 8px 12px; border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa; font: inherit; cursor: pointer; }
+    button:hover { background: #eef1f4; }
+    .error { color: #a40e26; min-height: 20px; margin: 0 0 12px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #d8dee4; }
+    li code { flex: 1; word-break: break-all; font-size: 13px; }
+    .status { color: #9a6700; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>显示按钮的页面</h1>
+  <p class="hint">按钮只在规则匹配的页面出现。默认启用 GitHub PR 和 GitLab MR；其他站点 请添加规则后点「启用站点」，再刷新该站点页面。匹配忽略 query 与 hash。</p>
+  <form id="add-form">
+    <input id="pattern" type="text" placeholder="https://git.example.com/*/merge_requests/*" autocomplete="off" spellcheck="false">
+    <button type="submit">添加规则</button>
+  </form>
+  <p id="error" class="error" role="alert"></p>
+  <ul id="rules"></ul>
+  <script src="common.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
